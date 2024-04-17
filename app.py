@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, Response, request, stream_with_context
 from langchain_community.llms import Ollama
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.output_parsers import StrOutputParser
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -15,9 +17,18 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama2")
 
 llm = Ollama(model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL)
 
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You're a world class assistant"),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("user", "{question}"),
+    ]
+)
+
 
 def generate_tokens(question):
-    for chunks in llm.stream(question):
+    chain = prompt | llm | StrOutputParser()
+    for chunks in chain.stream({"chat_history": [], "question": question}):
         yield chunks
 
 
